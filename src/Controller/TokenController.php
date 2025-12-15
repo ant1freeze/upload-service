@@ -41,7 +41,12 @@ final class TokenController
         }
         if ($task['type'] === 'archive_password') {
             $remaining = max(0, ($this->config['max_password_attempts'] ?? 5) - (int) $task['attempts']);
-            return $this->renderTemplate('templates/password_form.php', ['task' => $task, 'error' => null, 'remaining' => $remaining]);
+            return $this->renderTemplate('templates/password_form.php', [
+                'task' => $task,
+                'error' => null,
+                'remaining' => $remaining,
+                'archive_name' => $this->displayName($task['archive_path'] ?? null),
+            ]);
         }
         return $this->renderMessage('Неизвестный тип задачи');
     }
@@ -106,13 +111,25 @@ final class TokenController
                         'task' => $task,
                         'error' => 'Пароль обязателен',
                         'remaining' => $remaining,
+                        'archive_name' => $this->displayName($task['archive_path'] ?? null),
+                    ]);
+                }
+                $ok = $this->archives->verifyPassword((string) $task['archive_path'], $password);
+                if (!$ok) {
+                    $this->tasks->incrementAttempts((int) $task['id']);
+                    $remaining = max(0, $maxAttempts - (int) $task['attempts'] - 1);
+                    return $this->renderTemplate('templates/password_form.php', [
+                        'task' => $task,
+                        'error' => 'Пароль не подходит, повторите попытку',
+                        'remaining' => $remaining,
+                        'archive_name' => $this->displayName($task['archive_path'] ?? null),
                     ]);
                 }
                 $stored = $this->archives->encrypt($password);
                 $this->tasks->setArchivePassword((int) $task['id'], $stored);
                 $this->tasks->setStatus((int) $task['id'], 'done');
                 $this->tasks->markUsed((int) $task['id']);
-                return $this->renderMessage('Пароль принят, спасибо!');
+                return $this->renderMessage('Пароль принят, ожидайте завершения заявки.');
             }
         } catch (RuntimeException $e) {
             return $this->renderMessage('Ошибка: ' . $e->getMessage());
@@ -139,6 +156,14 @@ final class TokenController
     {
         http_response_code(200);
         return "<html><body><p>{$message}</p></body></html>";
+    }
+
+    private function displayName(?string $path): ?string
+    {
+        if (!$path) {
+            return null;
+        }
+        return basename($path);
     }
 }
 

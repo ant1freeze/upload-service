@@ -10,6 +10,9 @@
     <?php if (!empty($task['request_number'])): ?>
         <p><strong>Номер заявки:</strong> <?= htmlspecialchars((string) $task['request_number']) ?></p>
     <?php endif; ?>
+    <?php if (!empty($archive_name)): ?>
+        <p><strong>Архив:</strong> <?= htmlspecialchars((string) $archive_name) ?></p>
+    <?php endif; ?>
     <?php if (!empty($error)): ?>
         <p style="color:red;"><?= htmlspecialchars((string) $error) ?></p>
     <?php endif; ?>
