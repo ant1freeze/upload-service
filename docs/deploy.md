@@ -51,6 +51,13 @@ chmod 700 var var/db var/uploads var/log
 chmod 600 config.php
 ```
 
+Если нужно подготовить права отдельной командой:
+```bash
+mkdir -p /var/www/upload-service/var/db /var/www/upload-service/var/uploads /var/www/upload-service/var/log
+chown -R www-data:www-data /var/www/upload-service/var
+chmod 700 /var/www/upload-service/var /var/www/upload-service/var/db /var/www/upload-service/var/uploads /var/www/upload-service/var/log
+```
+
 ## PHP лимиты
 В `/etc/php/8.1/fpm/php.ini`:
 ```
@@ -173,30 +180,6 @@ curl -s http://127.0.0.1/api/tasks/<id> \
 systemctl enable --now nginx
 systemctl enable --now php8.1-fpm
 ```
-
-Одноразовый сервис для подготовки прав (опционально):
-`/etc/systemd/system/upload-service-prepare.service`
-```
-[Unit]
-Description=Prepare upload-service dirs
-After=network.target
-
-[Service]
-Type=oneshot
-ExecStart=/bin/bash -c '\
-  mkdir -p /var/www/upload-service/var/db /var/www/upload-service/var/uploads /var/www/upload-service/var/log && \
-  chown -R www-data:www-data /var/www/upload-service/var && \
-  chmod 700 /var/www/upload-service/var /var/www/upload-service/var/db /var/www/upload-service/var/uploads /var/www/upload-service/var/log'
-RemainAfterExit=yes
-
-[Install]
-WantedBy=multi-user.target
-```
-Активировать:
-```bash
-systemctl enable --now upload-service-prepare.service
-```
-
 
 ## Заметки безопасности
 - API доступен только с 127.0.0.1; наружу — только `/t/`.
