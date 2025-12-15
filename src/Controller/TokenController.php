@@ -36,8 +36,10 @@ final class TokenController
             return $this->renderMessage('Задача уже выполнена или недоступна');
         }
 
+        $csrfToken = $this->generateCsrfToken((int) $task['id'], $task['token']);
+        
         if ($task['type'] === 'upload') {
-            return $this->renderTemplate('templates/upload_form.php', ['task' => $task, 'error' => null]);
+            return $this->renderTemplate('templates/upload_form.php', ['task' => $task, 'error' => null, 'csrf_token' => $csrfToken]);
         }
         if ($task['type'] === 'archive_password') {
             $remaining = max(0, ($this->config['max_password_attempts'] ?? 5) - (int) $task['attempts']);
@@ -46,6 +48,7 @@ final class TokenController
                 'error' => null,
                 'remaining' => $remaining,
                 'archive_name' => $this->displayName($task['archive_path'] ?? null),
+                'csrf_token' => $csrfToken,
             ]);
         }
         return $this->renderMessage('Неизвестный тип задачи');
@@ -64,6 +67,13 @@ final class TokenController
         }
         if ($task['status'] !== 'pending') {
             return $this->renderMessage('Задача уже выполнена или недоступна');
+        }
+        
+        // Проверка CSRF токена
+        $csrfToken = $_POST['csrf_token'] ?? '';
+        $expectedToken = $this->generateCsrfToken((int) $task['id'], $task['token']);
+        if (!hash_equals($expectedToken, $csrfToken)) {
+            return $this->renderMessage('Ошибка безопасности. Обновите страницу и попробуйте снова.');
         }
 
         try {
@@ -164,6 +174,12 @@ final class TokenController
             return null;
         }
         return basename($path);
+    }
+    
+    private function generateCsrfToken(int $taskId, string $taskToken): string
+    {
+        $secret = $this->config['api_token'] ?? 'default-secret';
+        return hash_hmac('sha256', $taskId . ':' . $taskToken, $secret);
     }
 }
 

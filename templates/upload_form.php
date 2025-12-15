@@ -14,6 +14,7 @@
             <p style="color:#d11; margin:12px 0; font-weight:600;"><?= htmlspecialchars((string) $error) ?></p>
         <?php endif; ?>
         <form method="post" enctype="multipart/form-data" action="" style="margin-top:16px;">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string)($csrf_token ?? '')) ?>">
             <div style="margin-bottom:12px;">
                 <input type="file" name="file" required style="width:100%;"/>
             </div>

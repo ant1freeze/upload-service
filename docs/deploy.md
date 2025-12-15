@@ -43,6 +43,10 @@ return [
 ];
 ```
 
+**Важно:**
+- `archive_path` для задач `archive_password` должен быть в формате `/tmp/data/<TICKET_NUMBER>`, где `TICKET_NUMBER` начинается с букв и содержит только буквы и цифры (например: `MA4385764`).
+- Пример: `/tmp/data/MA4385764`
+
 Права:
 ```bash
 mkdir -p var/db var/uploads var/log
@@ -67,9 +71,13 @@ memory_limit = 256M
 ```
 Перезапуск: `systemctl restart php8.1-fpm`
 
-## Конфиг nginx (пример HTTP)
+## Конфиг nginx (пример HTTP с rate limiting)
 `/etc/nginx/sites-available/upload-service.conf`:
 ```
+# Rate limiting зоны (в http блоке /etc/nginx/nginx.conf или здесь)
+limit_req_zone $binary_remote_addr zone=api_limit:10m rate=30r/m;
+limit_req_zone $binary_remote_addr zone=form_limit:10m rate=10r/m;
+
 server {
     listen 127.0.0.1:80;
     server_name localhost;
@@ -79,8 +87,14 @@ server {
 
     location ~ /\.(git|env) { deny all; }
     location /       { try_files $uri /index.php$is_args$args; }
-    location /api/   { try_files $uri /index.php$is_args$args; }
-    location /t/     { try_files $uri /index.php$is_args$args; }
+    location /api/   {
+        limit_req zone=api_limit burst=5 nodelay;
+        try_files $uri /index.php$is_args$args;
+    }
+    location /t/     {
+        limit_req zone=form_limit burst=3 nodelay;
+        try_files $uri /index.php$is_args$args;
+    }
 
     location ~ \.php$ {
         include fastcgi_params;
@@ -98,6 +112,7 @@ server {
 
     location ~ /\.(git|env) { deny all; }
     location /t/ {
+        limit_req zone=form_limit burst=3 nodelay;
         try_files $uri /index.php$is_args$args;
         include fastcgi_params;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;

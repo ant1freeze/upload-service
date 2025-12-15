@@ -23,6 +23,7 @@
             <p style="margin:6px 0; color:#444;">Осталось попыток: <?= (int) $remaining ?></p>
         <?php endif; ?>
         <form method="post" style="margin-top:16px;">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars((string)($csrf_token ?? '')) ?>">
             <div style="margin-bottom:12px;">
                 <input type="password" name="password" required style="width:100%; padding:10px 12px; border:1px solid #ccc; border-radius:8px; font-size:14px; box-sizing:border-box;">
             </div>
