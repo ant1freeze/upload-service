@@ -1,0 +1,101 @@
+pipeline {
+    agent any
+    
+    environment {
+        UPLOAD_API_URL = 'http://127.0.0.1/api/tasks'
+        UPLOAD_API_TOKEN = credentials('upload-service-api-token') // Jenkins credentials
+    }
+    
+    stages {
+        stage('Подготовка') {
+            steps {
+                echo 'Подготовка к загрузке файла...'
+            }
+        }
+        
+        stage('Генерация ссылки для загрузки') {
+            steps {
+                script {
+                    // Вызываем скрипт генерации ссылки
+                    def uploadUrl = sh(
+                        script: './scripts/generate_upload_link.sh',
+                        returnStdout: true
+                    ).trim()
+                    
+                    // Сохраняем URL в переменную окружения для следующих этапов
+                    env.UPLOAD_URL = uploadUrl
+                    
+                    // Выводим ссылку в консоль
+                    echo "=========================================="
+                    echo "Ссылка для загрузки файла:"
+                    echo "${env.UPLOAD_URL}"
+                    echo "=========================================="
+                    
+                    // Можно также отправить уведомление (email, Slack и т.д.)
+                    // emailext(
+                    //     subject: "Требуется загрузка файла",
+                    //     body: "Пожалуйста, загрузите файл по ссылке: ${env.UPLOAD_URL}",
+                    //     to: "user@example.com"
+                    // )
+                }
+            }
+        }
+        
+        stage('Ожидание загрузки файла') {
+            steps {
+                script {
+                    def taskId = readFile('task_id.txt').trim()
+                    def maxWait = 3600 // максимум 1 час ожидания
+                    def waitInterval = 10 // проверка каждые 10 секунд
+                    def elapsed = 0
+                    
+                    while (elapsed < maxWait) {
+                        sleep(waitInterval)
+                        elapsed += waitInterval
+                        
+                        // Проверяем статус задачи
+                        def statusResponse = sh(
+                            script: """
+                                curl -s http://127.0.0.1/api/tasks/${taskId} \\
+                                    -H "Authorization: Bearer ${env.UPLOAD_API_TOKEN}"
+                            """,
+                            returnStdout: true
+                        )
+                        
+                        def status = sh(
+                            script: "echo '${statusResponse}' | grep -o '\"status\":\"[^\"]*\"' | cut -d'\"' -f4",
+                            returnStdout: true
+                        ).trim()
+                        
+                        echo "Статус задачи: ${status}"
+                        
+                        if (status == 'done') {
+                            echo "Файл успешно загружен!"
+                            // Можно получить путь к файлу
+                            def filePath = sh(
+                                script: "echo '${statusResponse}' | grep -o '\"file\":\"[^\"]*\"' | cut -d'\"' -f4",
+                                returnStdout: true
+                            ).trim()
+                            echo "Файл: ${filePath}"
+                            break
+                        } else if (status == 'failed') {
+                            error("Загрузка файла не удалась")
+                        }
+                    }
+                    
+                    if (elapsed >= maxWait) {
+                        error("Превышено время ожидания загрузки файла")
+                    }
+                }
+            }
+        }
+        
+        stage('Продолжение пайплайна') {
+            steps {
+                echo 'Продолжаем работу с загруженным файлом...'
+                // Здесь можно использовать файл из var/uploads/<task_id>/
+            }
+        }
+    }
+}
+

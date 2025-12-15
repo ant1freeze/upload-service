@@ -1,0 +1,20 @@
+# Sensitive/secret configs
+config.php
+
+# SSH keys
+**/id_ed25519
+**/id_ed25519.pub
+**/jumphost/id_ed25519*
+
+# Runtime data
+var/db/
+var/uploads/
+var/log/
+
+# SQLite and temp
+*.sqlite
+*.log
+
+# IDE/system
+.DS_Store
+*.ppk
