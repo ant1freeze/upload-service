@@ -107,6 +107,41 @@ nginx -t && systemctl reload nginx
 ```
 Для HTTPS добавьте `listen 443 ssl;` и сертификаты.
 
+### Вариант HTTPS (пример)
+```
+server {
+    listen 443 ssl;
+    server_name <домен>;
+    root /var/www/upload-service/public;
+    index index.php;
+    client_max_body_size 100M;
+
+    ssl_certificate     /etc/ssl/certs/upload-service.crt;
+    ssl_certificate_key /etc/ssl/private/upload-service.key;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 10m;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers on;
+
+    location ~ /\.(git|env) { deny all; }
+    location /t/ {
+        try_files $uri /index.php$is_args$args;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_pass unix:/run/php/php8.1-fpm.sock;
+    }
+    location /api/ { deny all; }
+    location / { return 403; }
+
+    location ~ \.php$ {
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_pass unix:/run/php/php8.1-fpm.sock;
+    }
+}
+```
+Для Let's Encrypt можно использовать certbot/nginx, либо подставить свои crt/key.
+
 ## Проверка
 Создать задачу upload:
 ```bash
@@ -131,6 +166,37 @@ curl -s -X POST http://127.0.0.1/api/tasks \
 curl -s http://127.0.0.1/api/tasks/<id> \
   -H "Authorization: Bearer <API_TOKEN>"
 ```
+
+## systemd
+Базовые сервисы:
+```bash
+systemctl enable --now nginx
+systemctl enable --now php8.1-fpm
+```
+
+Одноразовый сервис для подготовки прав (опционально):
+`/etc/systemd/system/upload-service-prepare.service`
+```
+[Unit]
+Description=Prepare upload-service dirs
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash -c '\
+  mkdir -p /var/www/upload-service/var/db /var/www/upload-service/var/uploads /var/www/upload-service/var/log && \
+  chown -R www-data:www-data /var/www/upload-service/var && \
+  chmod 700 /var/www/upload-service/var /var/www/upload-service/var/db /var/www/upload-service/var/uploads /var/www/upload-service/var/log'
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+```
+Активировать:
+```bash
+systemctl enable --now upload-service-prepare.service
+```
+
 
 ## Заметки безопасности
 - API доступен только с 127.0.0.1; наружу — только `/t/`.
