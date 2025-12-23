@@ -129,11 +129,17 @@ nginx -t && systemctl reload nginx
 ```
 Для HTTPS добавьте `listen 443 ssl;` и сертификаты.
 
-### Вариант HTTPS (пример)
+### Вариант HTTPS + redirect с 80
 ```
 server {
-    listen 443 ssl;
-    server_name <домен>;
+    listen 80 default_server;
+    server_name _; # или ваш домен/IP
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name <домен_или_IP>;
     root /var/www/upload-service/public;
     index index.php;
     client_max_body_size 100M;
@@ -146,20 +152,24 @@ server {
     ssl_prefer_server_ciphers on;
 
     location ~ /\.(git|env) { deny all; }
+
     location /t/ {
+        limit_req zone=form_limit burst=3 nodelay;
         try_files $uri /index.php$is_args$args;
         include fastcgi_params;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
         fastcgi_pass unix:/run/php/php8.1-fpm.sock;
     }
+
     location /api/ { deny all; }
-    location / { return 403; }
 
     location ~ \.php$ {
         include fastcgi_params;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
         fastcgi_pass unix:/run/php/php8.1-fpm.sock;
     }
+
+    location / { return 403; }
 }
 ```
 Для Let's Encrypt можно использовать certbot/nginx, либо подставить свои crt/key.
