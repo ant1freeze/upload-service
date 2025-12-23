@@ -99,6 +99,7 @@ final class TokenController
                     return $this->renderTemplate('templates/upload_form.php', [
                         'task' => $task,
                         'error' => $errorMsg,
+                        'csrf_token' => $csrfToken,
                     ]);
                 }
                 $relative = $this->uploads->saveUploadedFile((int) $task['id'], $_FILES['file']);
@@ -122,6 +123,7 @@ final class TokenController
                         'error' => 'Пароль обязателен',
                         'remaining' => $remaining,
                         'archive_name' => $this->displayName($task['archive_path'] ?? null),
+                        'csrf_token' => $csrfToken,
                     ]);
                 }
                 $ok = $this->archives->verifyPassword((string) $task['archive_path'], $password);
@@ -133,6 +135,7 @@ final class TokenController
                         'error' => 'Пароль не подходит, повторите попытку',
                         'remaining' => $remaining,
                         'archive_name' => $this->displayName($task['archive_path'] ?? null),
+                        'csrf_token' => $csrfToken,
                     ]);
                 }
                 $stored = $this->archives->encrypt($password);
