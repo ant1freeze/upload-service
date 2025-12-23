@@ -30,9 +30,11 @@ final class TaskApiController
         }
         $archivePath = $payload['archive_path'] ?? null;
         if ($archivePath !== null && $type === 'archive_password') {
-            // Валидация: должен быть /tmp/data/<TICKET_NUMBER>, где TICKET_NUMBER = буквы+цифры (например MA4385764)
-            if (!preg_match('#^/tmp/data/[A-Z][A-Z0-9]+$#', $archivePath)) {
-                return $this->json(['error' => 'Invalid archive_path format. Must be /tmp/data/<TICKET_NUMBER>'], 400);
+            // Валидация: /tmp/data/<TICKET>/<filename.zip>
+            // <TICKET> = буква + буквы/цифры (пример: MA4385764)
+            // <filename.zip> = имя файла без дополнительных слэшей
+            if (!preg_match('#^/tmp/data/[A-Z][A-Z0-9]+/[A-Za-z0-9._-]+\\.zip$#', $archivePath)) {
+                return $this->json(['error' => 'Invalid archive_path format. Must be /tmp/data/<TICKET>/<file>.zip'], 400);
             }
         }
         $expiresAt = $this->tokens->expiresAt($payload['expires_at'] ?? null);

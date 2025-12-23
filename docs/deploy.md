@@ -44,8 +44,8 @@ return [
 ```
 
 **Важно:**
-- `archive_path` для задач `archive_password` должен быть в формате `/tmp/data/<TICKET_NUMBER>`, где `TICKET_NUMBER` начинается с букв и содержит только буквы и цифры (например: `MA4385764`).
-- Пример: `/tmp/data/MA4385764`
+- `archive_path` для задач `archive_password` должен быть в формате `/tmp/data/<TICKET>/<file>.zip`, где `TICKET` начинается с буквы и содержит буквы/цифры (пример: `MA4385764`), а `file.zip` — имя архива без дополнительных слэшей.
+- Пример: `/tmp/data/MA4385764/Jenkinsfile.zip`
 
 Права:
 ```bash
